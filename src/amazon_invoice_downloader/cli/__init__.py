@@ -125,7 +125,7 @@ def run(playwright, args):
     print("🔗 AI assistant can control this browser instance via CDP")
 
     # Launch browser with CDP endpoint
-    browser = playwright.chromium.launch(
+    launched_browser = playwright.chromium.launch(
         headless=False,
         args=[
             '--remote-debugging-port=9222',
@@ -174,13 +174,17 @@ def run(playwright, args):
     test_less_featured_page = page.query_selector('a:has-text("Returns & Orders")')
     if not test_less_featured_page:
         print("Less featured page detected, navigating to sign-in...")
-        page.query_selector('a:has-text("Your Account")').click()
+        your_account = page.query_selector('a:has-text("Your Account")')
+        if your_account:
+            your_account.click()
+            page.wait_for_load_state("domcontentloaded")
+            sleep()
+
+    hello_sign_in = page.query_selector('a:has-text("Hello, sign in")')
+    if hello_sign_in:
+        hello_sign_in.click()
         page.wait_for_load_state("domcontentloaded")
         sleep()
-
-    page.query_selector('a:has-text("Hello, sign in")').click()
-    page.wait_for_load_state("domcontentloaded")
-    sleep()
 
     if email:
         page.get_by_label("Email").fill(email)
@@ -246,7 +250,7 @@ def run(playwright, args):
                 
                 # Ensure we have enough spans to parse
                 if len(spans) < 9:
-                    print(f"Warning: Order card has only {len(spans)} spans, skipping...")
+                    print(f"Warning: Order card has insufficient spans ({len(spans)}, need at least 9), skipping...")
                     continue
 
                 try:
@@ -289,6 +293,7 @@ def run(playwright, args):
     # Close the browser
     context.close()
     browser.close()
+    launched_browser.close()
 
 
 def amazon_invoice_downloader():
