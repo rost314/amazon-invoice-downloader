@@ -129,7 +129,7 @@ def run(playwright, args):
         headless=False,
         args=[
             '--remote-debugging-port=9222',
-            '--remote-debugging-address=0.0.0.0',
+            '--remote-debugging-address=127.0.0.1',
             '--disable-web-security',
             '--disable-features=VizDisplayCompositor',
         ],
@@ -243,18 +243,25 @@ def run(playwright, args):
             for order_card in order_cards:
                 # Parse the order card to create the date and file_name
                 spans = order_card.query_selector_all("span")
-                # Debug:
-                # for i,s in enumerate(spans): print(i, s.inner_text())
-
-                # Skip cancelled orders
-                if spans[4].inner_text().strip().lower() == "cancelled":
+                
+                # Ensure we have enough spans to parse
+                if len(spans) < 9:
+                    print(f"Warning: Order card has only {len(spans)} spans, skipping...")
                     continue
 
-                date = datetime.strptime(spans[1].inner_text(), "%B %d, %Y")
-                total = spans[3].inner_text().replace("$", "").replace(",", "")  # remove dollar sign and commas
-                orderid = spans[8].inner_text()
-                date_str = date.strftime("%Y%m%d")
-                file_name = f"{target_dir}/{date_str}_{total}_amazon_{orderid}.pdf"
+                try:
+                    # Skip cancelled orders
+                    if spans[4].inner_text().strip().lower() == "cancelled":
+                        continue
+
+                    date = datetime.strptime(spans[1].inner_text(), "%B %d, %Y")
+                    total = spans[3].inner_text().replace("$", "").replace(",", "")  # remove dollar sign and commas
+                    orderid = spans[8].inner_text()
+                    date_str = date.strftime("%Y%m%d")
+                    file_name = f"{target_dir}/{date_str}_{total}_amazon_{orderid}.pdf"
+                except (IndexError, ValueError) as e:
+                    print(f"Warning: Failed to parse order card: {e}, skipping...")
+                    continue
 
                 if date > end_date:
                     continue
@@ -289,7 +296,6 @@ def amazon_invoice_downloader():
     load_env_if_needed()
 
     args = docopt(__doc__)
-    # print(args)
     if args['--version']:
         print(__version__)
         sys.exit(0)
